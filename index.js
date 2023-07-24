@@ -7,15 +7,36 @@ const port = process.env.PORT || 5000;
 
 //middleware
 const corsConfig = {
-    origin: '',
+    origin: '*', // Allow requests from any origin
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE']
 }
-app.use(cors(corsConfig))
-app.options("", cors(corsConfig))
+app.use(cors(corsConfig));
+
 app.use(express.json());
 
+const verifyJWT = (req, res, next) => {
+    const authorization = req.headers.authorization;
 
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: 'Unauthorized access' });
+    }
+
+    const token = authorization.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ error: true, message: 'Invalid token' });
+        }
+
+        if (!decoded.email) {
+            return res.status(401).send({ error: true, message: 'Invalid token payload' });
+        }
+
+        req.decoded = decoded;
+        next();
+    });
+};
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vweq3se.mongodb.net/?retryWrites=true&w=majority`;
@@ -32,6 +53,13 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         const collegesCollection = client.db("studyCamp").collection("colleges");
+
+        app.post('/jwt', (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+
+            res.send({ token })
+        })
 
         // colleges  apis
         app.get('/colleges', async (req, res) => {
