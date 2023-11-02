@@ -53,10 +53,12 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         const collegesCollection = client.db("studyCamp").collection("colleges");
+        const MyCollegeCollection = client.db("studyCamp").collection("myCollege");
+        const candidateCollection = client.db("studyCamp").collection("candidateCollection");
 
         app.post('/jwt', (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24h' })
 
             res.send({ token })
         })
@@ -76,6 +78,8 @@ async function run() {
         app.get('/users/colleges/:id', async (req, res) => {
             const id = req.params.id;
 
+             
+
             try {
                 const colleges = await collegesCollection.findOne({ _id: new ObjectId(id) });
                 if (!colleges) {
@@ -88,8 +92,26 @@ async function run() {
                 res.status(500).json({ error: true, message: 'Server error' });
             }
         });
+        // my college api
+        
+        // post candidate information 
+      app.post("/candidate" , async(req, res)=>{
+        const info = req.body
+          console.log(info);
+          const result = await candidateCollection.insertOne(info);
+          res.send(result)
+      })
 
-
+      // get candidate information by email 
+      app.get("/mycollege" , async(req , res)=>{
+        let query = {};
+        if(req.query?.email){
+          query = {email:req.query.email}
+        }
+        const cursor = candidateCollection.find(query)
+        const result = await cursor.toArray();
+        res.send(result)
+      })
 
 
         // Connect the client to the server	(optional starting in v4.7)
